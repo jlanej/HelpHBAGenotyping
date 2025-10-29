@@ -170,15 +170,23 @@ VCFSGZ_DIR=$(dirname "$INPUTVCFSGZ")
 # Collect unique directories for binding
 BIND_DIRS=()
 for dir in "$BAM_DIR" "$BAM_INDEX_DIR" "$REF_DIR" "$KMER_DIR" "$KMER_INDEX_DIR" "$BG_DIR" "$VCFSGZ_DIR" "$OUTPUT_DIR"; do
-    if [[ ! " ${BIND_DIRS[@]} " =~ " ${dir} " ]]; then
+    # Check if directory is already in the list
+    found=0
+    for existing in "${BIND_DIRS[@]}"; do
+        if [[ "$existing" == "$dir" ]]; then
+            found=1
+            break
+        fi
+    done
+    if [[ $found -eq 0 ]]; then
         BIND_DIRS+=("$dir")
     fi
 done
 
-# Build bind mount arguments
-BIND_ARGS=""
+# Build bind mount arguments array
+BIND_ARGS=()
 for dir in "${BIND_DIRS[@]}"; do
-    BIND_ARGS="$BIND_ARGS --bind $dir"
+    BIND_ARGS+=(--bind "$dir")
 done
 
 echo "Running ctyper with apptainer..."
@@ -195,7 +203,7 @@ cd "$OUTPUT_DIR"
 echo "Step 1: Running ctyper genotyping..."
 apptainer exec \
     --containall \
-    $BIND_ARGS \
+    "${BIND_ARGS[@]}" \
     "$CONTAINER_IMAGE" \
     ctyper \
         -T "$REFERENCE" \
